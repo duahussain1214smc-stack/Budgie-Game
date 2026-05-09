@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="description" content="Budgie - hop across roads and rivers! Avoid cars, trucks, trains. Ride logs. How far can you go?">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Budgie">
+<link rel="manifest" href="manifest.json">
+<title>Budgie 🐦</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #1a1a2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    touch-action: none;
+  }
+  #game-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #hud {
+    width: 360px;
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .hud-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .hud-label { font-size: 10px; font-weight: 400; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+  .hud-val { font-size: 18px; font-weight: 700; }
+  canvas {
+    display: block;
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  }
+  #overlay {
+    position: absolute;
+    top: 44px;
+    left: 0;
+    width: 360px;
+    height: 520px;
+    border-radius: 16px;
+    background: rgba(10, 10, 30, 0.88);
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    z-index: 10;
+    color: #fff;
+  }
+  .overlay-bird { font-size: 64px; line-height: 1; }
+  .overlay-title {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #f5c842, #ff8c42);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .overlay-sub {
+    font-size: 13px;
+    opacity: 0.7;
+    text-align: center;
+    max-width: 260px;
+    line-height: 1.7;
+  }
+  .btn-primary {
+    padding: 13px 36px;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 50px;
+    border: none;
+    background: linear-gradient(135deg, #f5c842, #ff8c42);
+    color: #1a1a2e;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: transform 0.12s, box-shadow 0.12s;
+    box-shadow: 0 4px 20px rgba(245, 200, 66, 0.4);
+  }
+  .btn-primary:active { transform: scale(0.96); }
+  .btn-secondary {
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 50px;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-secondary:active { background: rgba(255,255,255,0.2); }
+  .score-big {
+    font-size: 52px;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, #f5c842, #ff8c42);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .score-row { display: flex; gap: 28px; }
+  .score-item { text-align: center; }
+  .score-item-label { font-size: 11px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+  .score-item-val { font-size: 22px; font-weight: 700; }
+
+  /* Shop */
+  #shop-modal {
+    display: none;
+    position: absolute;
+    top: 44px;
+    left: 0;
+    z-index: 20;
+    width: 360px;
+    height: 520px;
+    border-radius: 16px;
+    background: rgba(10, 10, 30, 0.95);
+    backdrop-filter: blur(8px);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 28px 24px;
+    color: #fff;
+  }
+  .shop-title {
+    font-size: 24px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #f5c842, #ff8c42);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+  }
+  .shop-coins {
+    font-size: 13px;
+    opacity: 0.7;
+    margin-bottom: 6px;
+  }
+  .shop-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+  }
+  .shop-item-info { display: flex; flex-direction: column; gap: 2px; }
+  .shop-item-name { font-size: 15px; font-weight: 600; }
+  .shop-item-desc { font-size: 12px; opacity: 0.55; }
+  .shop-buy {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 50px;
+    border: none;
+    background: linear-gradient(135deg, #f5c842, #ff8c42);
+    color: #1a1a2e;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  .shop-buy:disabled { opacity: 0.35; cursor: default; background: rgba(255,255,255,0.2); color: #fff; }
+  .shop-msg { font-size: 13px; color: #f5c842; min-height: 18px; font-weight: 600; }
+
+  #controls-hint {
+    width: 360px;
+    text-align: center;
+    padding: 8px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <div id="hud">
+    <div class="hud-item">
+      <span class="hud-label">Score</span>
+      <span class="hud-val" id="score-display">0</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">Lives</span>
+      <span class="hud-val" id="lives-display">❤️❤️❤️</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">Coins</span>
+      <span class="hud-val" id="coins-display">🪙 0</span>
+    </div>
+  </div>
+
+  <canvas id="c" width="360" height="520"></canvas>
+
+  <div id="overlay">
+    <div class="overlay-bird">🐦</div>
+    <div class="overlay-title">Budgie</div>
+    <div class="overlay-sub">Tap to hop forward · Swipe to move sideways<br>Avoid cars 🚗 trucks 🚛 trains 🚆<br>Ride logs across rivers 🌊</div>
+    <button class="btn-primary" id="start-btn">Play</button>
+    <button class="btn-secondary" id="shop-btn-menu">Shop 🛒</button>
+  </div>
+
+  <div id="shop-modal">
+    <div class="shop-title">Shop</div>
+    <div class="shop-coins" id="shop-coins-label">You have 🪙 0 coins</div>
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">❤️ Extra Life</div>
+        <div class="shop-item-desc">+1 life instantly</div>
+      </div>
+      <button class="shop-buy" id="buy-life">🪙 30</button>
+    </div>
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">⚡ Shield</div>
+        <div class="shop-item-desc">10 seconds invincibility</div>
+      </div>
+      <button class="shop-buy" id="buy-shield">🪙 50</button>
+    </div>
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">💙 Blue Bird</div>
+        <div class="shop-item-desc">Unlock blue skin forever</div>
+      </div>
+      <button class="shop-buy" id="buy-blue">🪙 80</button>
+    </div>
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">🟢 Green Bird</div>
+        <div class="shop-item-desc">Unlock green skin forever</div>
+      </div>
+      <button class="shop-buy" id="buy-green">🪙 80</button>
+    </div>
+    <div class="shop-msg" id="shop-msg"></div>
+    <button class="btn-secondary" id="close-shop">Close</button>
+  </div>
+
+  <div id="controls-hint">Arrow keys · WASD · Tap · Swipe</div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 360, H = 520;
+const COLS = 9, CELL = W / COLS;
+const ROWS = 13, ROW_H = H / ROWS;
+
+let state = 'menu';
+let score = 0, lives = 3, coins = 0, highScore = 0;
+let shieldActive = false, shieldTimer = 0;
+let birdSkin = 'yellow';
+let skins = { blue: false, green: false };
+
+const scoreEl = document.getElementById('score-display');
+const livesEl = document.getElementById('lives-display');
+const coinsEl = document.getElementById('coins-display');
+const overlay  = document.getElementById('overlay');
+const shopModal = document.getElementById('shop-modal');
+const shopMsg  = document.getElementById('shop-msg');
+const shopCoinsLabel = document.getElementById('shop-coins-label');
+
+function updateHUD() {
+  scoreEl.textContent = score;
+  const hearts = '❤️'.repeat(Math.max(0, lives)) || '💀';
+  livesEl.textContent = hearts;
+  coinsEl.textContent = '🪙 ' + coins;
+}
+
+/* ── Row builder ── */
+function buildRows() {
+  return [
+    { type:'safe',  y:12*ROW_H },
+    { type:'road',  y:11*ROW_H, lanes: makeLane('car',   1,   1.0) },
+    { type:'road',  y:10*ROW_H, lanes: makeLane('truck', -1,  1.1) },
+    { type:'road',  y: 9*ROW_H, lanes: makeLane('car',   1,   1.4) },
+    { type:'safe',  y: 8*ROW_H },
+    { type:'rail',  y: 7*ROW_H, lanes: makeLane('train', 1,   2.8) },
+    { type:'river', y: 6*ROW_H, lanes: makeLogs(1,   0.9) },
+    { type:'river', y: 5*ROW_H, lanes: makeLogs(-1,  1.1) },
+    { type:'river', y: 4*ROW_H, lanes: makeLogs(1,   1.3) },
+    { type:'safe',  y: 3*ROW_H },
+    { type:'road',  y: 2*ROW_H, lanes: makeLane('car',   -1,  1.8) },
+    { type:'rail',  y: 1*ROW_H, lanes: makeLane('train', -1,  3.2) },
+    { type:'safe',  y: 0*ROW_H },
+  ];
+}
+
+function makeLane(vtype, dir, spMul) {
+  const count = vtype === 'train' ? 1 : 2 + Math.floor(Math.random()*2);
+  const sp = dir * (1.0 + Math.random()*0.4) * spMul;
+  return Array.from({length: count}, (_, i) => ({
+    x: i * (W / count) + Math.random()*10, vtype, speed: sp
+  }));
+}
+
+function makeLogs(dir, spMul) {
+  const sp = dir * (0.7 + Math.random()*0.3) * spMul;
+  return Array.from({length: 3}, (_, i) => ({
+    x: i * 110 + Math.random()*20, vtype:'log', speed: sp
+  }));
+}
+
+let rows = buildRows();
+
+/* ── Bird ── */
+let bird = { col:4, row:12, x:0, y:0, dead:false, onLog:null };
+function resetBird() {
+  bird.col=4; bird.row=12; bird.dead=false; bird.onLog=null; syncXY();
+}
+function syncXY() {
+  bird.x = bird.col * CELL + CELL/2;
+  bird.y = bird.row * ROW_H + ROW_H/2;
+}
+
+/* ── Game loop ── */
+let lastTime=0, raf=null;
+const SPEED = 42;
+
+function gameLoop(ts) {
+  const dt = Math.min((ts - lastTime)/1000, 0.05);
+  lastTime = ts;
+  update(dt);
+  draw();
+  if (state==='playing') raf = requestAnimationFrame(gameLoop);
+}
+
+function update(dt) {
+  for (const row of rows) {
+    if (!row.lanes) continue;
+    for (const item of row.lanes) {
+      item.x += item.speed * SPEED * dt;
+      if (item.x > W+200) item.x -= W+400;
+      if (item.x < -200)  item.x += W+400;
+    }
+  }
+
+  if (shieldActive) { shieldTimer -= dt; if (shieldTimer<=0) shieldActive=false; }
+
+  const row = rows[bird.row];
+  bird.onLog = null;
+
+  if (row && row.type==='river') {
+    for (const log of row.lanes) {
+      if (bird.x >= log.x+4 && bird.x <= log.x+76) { bird.onLog=log; break; }
+    }
+    if (bird.onLog) {
+      bird.x += bird.onLog.speed * SPEED * dt;
+      bird.col = Math.round((bird.x - CELL/2) / CELL);
+    } else if (!shieldActive) { die(); return; }
+  }
+
+  bird.x = Math.max(CELL/2, Math.min(W - CELL/2, bird.x));
+
+  if (row && (row.type==='road'||row.type==='rail') && !shieldActive) {
+    for (const v of row.lanes) {
+      const vw = v.vtype==='train'?200 : v.vtype==='truck'?72 : 44;
+      if (bird.x > v.x+5 && bird.x < v.x+vw-5 && bird.y > row.y+5 && bird.y < row.y+ROW_H-5) {
+        die(); return;
+      }
+    }
+  }
+
+  if (bird.row===0 && !bird.dead) {
+    score += 10; coins += 5; updateHUD();
+    resetBird();
+    rows = buildRows();
+  }
+}
+
+function die() {
+  if (bird.dead) return;
+  bird.dead = true;
+  lives--;
+  updateHUD();
+  setTimeout(() => {
+    if (lives <= 0) endGame();
+    else { bird.dead=false; resetBird(); }
+  }, 700);
+}
+
+function endGame() {
+  state = 'over';
+  cancelAnimationFrame(raf);
+  if (score > highScore) highScore = score;
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="overlay-bird">💀</div>
+    <div class="overlay-title" style="font-size:28px;">Game Over</div>
+    <div class="score-big">${score}</div>
+    <div class="score-row">
+      <div class="score-item"><div class="score-item-label">Best</div><div class="score-item-val">${highScore}</div></div>
+      <div class="score-item"><div class="score-item-label">Coins</div><div class="score-item-val">🪙${coins}</div></div>
+    </div>
+    <button class="btn-primary" id="restart-btn">Play Again</button>
+    <button class="btn-secondary" id="shop-btn-over">Shop 🛒</button>
+  `;
+  document.getElementById('restart-btn').onclick = startGame;
+  document.getElementById('shop-btn-over').onclick = openShop;
+}
+
+function startGame() {
+  state='playing'; score=0; lives=3;
+  shieldActive=false; shieldTimer=0;
+  updateHUD();
+  rows = buildRows();
+  resetBird();
+  overlay.style.display='none';
+  lastTime = performance.now();
+  raf = requestAnimationFrame(gameLoop);
+}
+
+/* ── Draw ── */
+function draw() {
+  ctx.clearRect(0,0,W,H);
+
+  for (const row of rows) {
+    const c = row.type;
+    ctx.fillStyle = c==='safe'?'#3d6b2a': c==='road'?'#3a3a3a': c==='rail'?'#5a4010':'#1a5aaa';
+    ctx.fillRect(0, row.y, W, ROW_H);
+
+    if (c==='road') {
+      ctx.fillStyle='rgba(255,220,0,0.55)';
+      for (let x=0;x<W;x+=36) ctx.fillRect(x, row.y+ROW_H/2-1.5, 20, 3);
+    }
+    if (c==='rail') {
+      ctx.fillStyle='#999';
+      ctx.fillRect(0, row.y+5, W, 3);
+      ctx.fillRect(0, row.y+ROW_H-8, W, 3);
+      ctx.fillStyle='#6b4010';
+      for (let x=0;x<W;x+=18) ctx.fillRect(x, row.y+5, 10, ROW_H-10);
+    }
+    if (c==='river') {
+      ctx.fillStyle='rgba(255,255,255,0.06)';
+      for (let x=0;x<W;x+=28) {
+        ctx.beginPath(); ctx.arc(x+14, row.y+ROW_H/2, 10, 0, Math.PI, true); ctx.fill();
+      }
+    }
+    if (c==='safe') {
+      ctx.fillStyle='rgba(0,0,0,0.1)';
+      for (let x=0;x<W;x+=18) ctx.fillRect(x, row.y, 9, ROW_H);
+      ctx.fillStyle='#2d5520';
+      for (let x=4;x<W;x+=16) {
+        ctx.fillRect(x, row.y+5, 2, 9);
+        ctx.fillRect(x+4, row.y+3, 2, 11);
+        ctx.fillRect(x+8, row.y+7, 2, 7);
+      }
+    }
+
+    if (!row.lanes) continue;
+    for (const item of row.lanes) drawVehicle(item, row.y);
+  }
+
+  if (!bird.dead) drawBird(bird.x, bird.y);
+  if (shieldActive) {
+    ctx.save();
+    ctx.strokeStyle=`rgba(80,200,255,${0.5+0.5*Math.sin(Date.now()/150)})`;
+    ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(bird.x, bird.y, 20, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+const CAR_COLORS=['#e03030','#30a030','#e08020','#9030b0','#20a0c0'];
+
+function drawVehicle(item, ry) {
+  const x=item.x, cy=ry+ROW_H/2;
+  if (item.vtype==='log') {
+    ctx.fillStyle='#7a4a10';
+    ctx.beginPath(); ctx.roundRect(x, ry+9, 80, ROW_H-18, 6); ctx.fill();
+    ctx.fillStyle='#9a6020';
+    for (let i=0;i<3;i++) {
+      ctx.beginPath(); ctx.arc(x+14+i*26, cy, 4, 0, Math.PI*2); ctx.fill();
+    }
+    return;
+  }
+  if (item.vtype==='train') {
+    ctx.fillStyle='#b01818';
+    ctx.beginPath(); ctx.roundRect(x, ry+7, 200, ROW_H-14, 5); ctx.fill();
+    ctx.fillStyle='#d02020';
+    ctx.fillRect(x+8, ry+10, 184, 5);
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    for (let i=0;i<6;i++) ctx.fillRect(x+12+i*30, ry+12, 14, 8);
+    ctx.fillStyle='#ffcc00';
+    ctx.beginPath(); ctx.arc(item.speed>0?x+196:x+4, cy, 5, 0, Math.PI*2); ctx.fill();
+    return;
+  }
+  if (item.vtype==='truck') {
+    ctx.fillStyle='#2050a0';
+    ctx.beginPath(); ctx.roundRect(x, ry+8, 72, ROW_H-16, 5); ctx.fill();
+    ctx.fillStyle='#3060cc';
+    ctx.fillRect(x+6, ry+11, 60, 7);
+    ctx.fillStyle='rgba(255,255,255,0.65)';
+    ctx.fillRect(x+8, ry+12, 16, 5);
+    ctx.fillStyle='#ffdd44';
+    ctx.beginPath(); ctx.arc(item.speed>0?x+68:x+4, cy, 4, 0, Math.PI*2); ctx.fill();
+    return;
+  }
+  ctx.fillStyle = CAR_COLORS[Math.abs(Math.round(x/50))%CAR_COLORS.length];
+  ctx.beginPath(); ctx.roundRect(x, ry+9, 44, ROW_H-18, 5); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.fillRect(x+7, ry+12, 11, 6);
+  ctx.fillRect(x+22, ry+12, 11, 6);
+  ctx.fillStyle='#ffdd44';
+  ctx.beginPath(); ctx.arc(item.speed>0?x+40:x+4, cy, 3, 0, Math.PI*2); ctx.fill();
+}
+
+function drawBird(bx, by) {
+  const color = birdSkin==='blue'&&skins.blue ? '#4488ff'
+              : birdSkin==='green'&&skins.green ? '#44cc44'
+              : '#f5c842';
+  const dark  = birdSkin==='blue'&&skins.blue ? '#1144cc'
+              : birdSkin==='green'&&skins.green ? '#228822'
+              : '#c49010';
+
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.ellipse(bx, by, 13, 10, 0, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(bx+9, by-5, 7, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle='#e06010';
+  ctx.beginPath();
+  ctx.moveTo(bx+16, by-5); ctx.lineTo(bx+23, by-3); ctx.lineTo(bx+16, by-1);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle=dark;
+  ctx.beginPath(); ctx.ellipse(bx-2, by, 7, 5, -0.3, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle='#111';
+  ctx.beginPath(); ctx.arc(bx+11, by-7, 2, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(bx+12, by-7.5, 0.8, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle=dark;
+  ctx.beginPath();
+  ctx.moveTo(bx+6, by-11);
+  ctx.bezierCurveTo(bx+8, by-19, bx+14, by-17, bx+12, by-11);
+  ctx.closePath(); ctx.fill();
+}
+
+/* ── Input ── */
+function moveUp()    { if(state!=='playing'||bird.dead)return; if(bird.row>0){ bird.row--; score+=1; updateHUD(); syncXY(); } }
+function moveDown()  { if(state!=='playing'||bird.dead)return; if(bird.row<ROWS-1){ bird.row++; syncXY(); } }
+function moveLeft()  { if(state!=='playing'||bird.dead)return; if(bird.col>0){ bird.col--; syncXY(); } }
+function moveRight() { if(state!=='playing'||bird.dead)return; if(bird.col<COLS-1){ bird.col++; syncXY(); } }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowUp'   ||e.key==='w'){e.preventDefault();moveUp();}
+  if(e.key==='ArrowDown' ||e.key==='s'){e.preventDefault();moveDown();}
+  if(e.key==='ArrowLeft' ||e.key==='a'){e.preventDefault();moveLeft();}
+  if(e.key==='ArrowRight'||e.key==='d'){e.preventDefault();moveRight();}
+});
+
+let tx=0, ty=0;
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); tx=e.touches[0].clientX; ty=e.touches[0].clientY; },{passive:false});
+canvas.addEventListener('touchend', e=>{
+  e.preventDefault();
+  const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)<12&&Math.abs(dy)<12){moveUp();return;}
+  if(Math.abs(dx)>Math.abs(dy)) dx>0?moveRight():moveLeft();
+  else dy>0?moveDown():moveUp();
+},{passive:false});
+
+/* ── Shop ── */
+function openShop() {
+  updateShopUI();
+  shopModal.style.display='flex';
+}
+function closeShopFn() { shopModal.style.display='none'; }
+
+function updateShopUI() {
+  shopCoinsLabel.textContent = 'You have 🪙 '+coins+' coins';
+  document.getElementById('buy-life').disabled   = coins<30;
+  document.getElementById('buy-shield').disabled = coins<50;
+  const bbl = document.getElementById('buy-blue');
+  const bgl = document.getElementById('buy-green');
+  if (skins.blue)  { bbl.textContent='Owned ✓'; bbl.disabled=true; }
+  else { bbl.textContent='🪙 80'; bbl.disabled=coins<80; }
+  if (skins.green) { bgl.textContent='Owned ✓'; bgl.disabled=true; }
+  else { bgl.textContent='🪙 80'; bgl.disabled=coins<80; }
+}
+
+document.getElementById('buy-life').onclick = () => {
+  if(coins<30)return; coins-=30; lives++;
+  updateHUD(); updateShopUI(); shopMsg.textContent='❤️ +1 life added!';
+};
+document.getElementById('buy-shield').onclick = () => {
+  if(coins<50)return; coins-=50;
+  shieldActive=true; shieldTimer=10;
+  updateHUD(); updateShopUI(); shopMsg.textContent='⚡ Shield active for 10s!';
+};
+document.getElementById('buy-blue').onclick = () => {
+  if(coins<80||skins.blue)return; coins-=80; skins.blue=true; birdSkin='blue';
+  updateHUD(); updateShopUI(); shopMsg.textContent='💙 Blue Bird unlocked!';
+};
+document.getElementById('buy-green').onclick = () => {
+  if(coins<80||skins.green)return; coins-=80; skins.green=true; birdSkin='green';
+  updateHUD(); updateShopUI(); shopMsg.textContent='🟢 Green Bird unlocked!';
+};
+document.getElementById('close-shop').onclick = closeShopFn;
+document.getElementById('start-btn').onclick = startGame;
+document.getElementById('shop-btn-menu').onclick = openShop;
+
+// static first draw
+draw();
+updateHUD();
+</script>
+
+<!-- PWA Service Worker Registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
